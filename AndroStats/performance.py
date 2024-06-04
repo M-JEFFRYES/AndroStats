@@ -37,34 +37,34 @@ class CanoeAnalysis:
             d.append(
                 {
                     "value": i,
-                    "variance": all_df[(all_df["start"] <= i) & (all_df["end"] >= i)][
-                        "var"
-                    ].values[0],
+                    "variance": all_df[(all_df["start"] <= i) & (all_df["end"] >= i)]["var"].values[0],
                 }
             )
 
         self.canoe_allowances = pd.DataFrame(d)
+        self.canoe_allowances["upper"] = self.canoe_allowances["value"] + self.canoe_allowances["variance"]
+        self.canoe_allowances["lower"] = self.canoe_allowances["value"] - self.canoe_allowances["variance"]
         return
 
-    def prediction_within_canoe(
-        self, true_value: float | int, pred_value: float | int, multipler: float = 1
-    ) -> bool:
+    def allowable_variance(self, true_value: float | int) -> float:
         try:
             val_check = int(true_value)
-            variance = self.canoe_allowances[
-                self.canoe_allowances["value"] == val_check
-            ]["variance"].iloc[0]
+            variance = self.canoe_allowances[self.canoe_allowances["value"] == val_check]["variance"].iloc[0]
+        except:
+            raise Exception(f"Value {val_check} not found in perfomance canoe range")
+        return variance
+
+    def prediction_within_canoe(self, true_value: float | int, pred_value: float | int, multipler: float = 1) -> bool:
+        try:
+            val_check = int(true_value)
+            variance = self.canoe_allowances[self.canoe_allowances["value"] == val_check]["variance"].iloc[0]
         except:
             raise Exception(f"Value {val_check} not found in perfomance canoe range")
 
-        c1 = (pred_value >= (true_value - (variance * multipler))) and (
-            pred_value <= (true_value + (variance * multipler))
-        )
+        c1 = (pred_value >= (true_value - (variance * multipler))) and (pred_value <= (true_value + (variance * multipler)))
         return c1
 
-    def array_predictions_within_canoe(
-        self, arr1: np.array, arr2: np.array, multipler: float = 1
-    ) -> np.array:
+    def array_predictions_within_canoe(self, arr1: np.array, arr2: np.array, multipler: float = 1) -> np.array:
         if (len(arr1) < 1) or (len(arr2) < 1):
             raise Exception("Empty input array")
 
@@ -73,15 +73,11 @@ class CanoeAnalysis:
 
         c_a_1 = []
         for true_value, predicted_value in zip(arr1, arr2):
-            c1 = self.prediction_within_canoe(
-                true_value, predicted_value, multipler=multipler
-            )
+            c1 = self.prediction_within_canoe(true_value, predicted_value, multipler=multipler)
             c_a_1.append(c1)
         return c_a_1
 
-    def calculate_canoe_performance_score(
-        self, arr1: np.array, arr2: np.array, multipler: float = 1
-    ) -> float:
+    def calculate_canoe_performance_score(self, arr1: np.array, arr2: np.array, multipler: float = 1) -> float:
         c_a_1 = self.array_predictions_within_canoe(arr1, arr2, multipler=multipler)
         val = float(np.sum(c_a_1) / len(c_a_1))
         return val
@@ -93,14 +89,10 @@ class BlandAltmanCalculation:
     def __init__(self):
         return
 
-    def calculate_mean(
-        self, true_values: np.array, predicted_values: np.array
-    ) -> np.array:
+    def calculate_mean(self, true_values: np.array, predicted_values: np.array) -> np.array:
         return (true_values + predicted_values) / 2
 
-    def calculate_difference(
-        self, true_values: np.array, predicted_values: np.array
-    ) -> np.array:
+    def calculate_difference(self, true_values: np.array, predicted_values: np.array) -> np.array:
         return true_values - predicted_values
 
     def calculate_bias(self, measurement_differences: np.array) -> float:
@@ -115,13 +107,9 @@ class BlandAltmanCalculation:
     def calculate_lower_limit(self, mean_bias: float, difference_std: float) -> float:
         return mean_bias - (self.CI_95 * difference_std)
 
-    def calculate(
-        self, true_values: np.array, predicted_values: np.array
-    ) -> dict:
+    def calculate(self, true_values: np.array, predicted_values: np.array) -> dict:
         measurement_means = self.calculate_mean(true_values, predicted_values)
-        measurement_differences = self.calculate_difference(
-            true_values, predicted_values
-        )
+        measurement_differences = self.calculate_difference(true_values, predicted_values)
         mean_bias = self.calculate_bias(measurement_differences)
         difference_std = self.calculate_difference_std(measurement_differences)
         upper_limit = self.calculate_upper_limit(mean_bias, difference_std)
