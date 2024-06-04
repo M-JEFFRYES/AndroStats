@@ -161,6 +161,13 @@ class DoughnutAnalysis:
             status = self.get_comparision_status(tv, pv, allowable_variance, threshold, is_lower)
             res.append(status)
         return res
+    
+    def get_boundary_status_array(self, values: np.array, allowable_variance: float, threshold: int) -> str:
+        res = []
+        for v in values:
+            status = self.get_measurement_status(v, allowable_variance, threshold)
+            res.append(status)
+        return res
 
     def calculate_doughnut_analysis(self, true_vals: np.array, pred_vals: np.array, allowable_variance: float, threshold: int, is_lower: bool):
         statuses = self.get_array_comparision(true_vals, pred_vals, allowable_variance, threshold, is_lower)
