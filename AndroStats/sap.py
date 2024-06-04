@@ -12,7 +12,7 @@ class SemenAnalysisParameters:
         return
 
     def parameters_data_path(self) -> None:
-        return "data/param_percentiles.csv"
+        return get_resource("data/param_percentiles.csv")
 
     def load_parameters(self) -> None:
         self.df = pd.read_csv(self.parameters_data_path())
