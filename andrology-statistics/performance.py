@@ -115,7 +115,7 @@ class BlandAltmanCalculation:
     def calculate_lower_limit(self, mean_bias: float, difference_std: float) -> float:
         return mean_bias - (self.CI_95 * difference_std)
 
-    def calculate_bland_altman(
+    def calculate(
         self, true_values: np.array, predicted_values: np.array
     ) -> dict:
         measurement_means = self.calculate_mean(true_values, predicted_values)
