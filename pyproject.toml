@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "AndroStats"
-version = "0.1.8"
+version = "0.1.9"
 description = "Stats for andrology"
 authors = ["M-Jeffryes <michael@maleboxhealth.com>"]
 readme = "README.md"
