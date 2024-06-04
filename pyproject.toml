@@ -1,9 +1,10 @@
 [tool.poetry]
-name = "androstats"
-version = "0.1.0"
-description = ""
+name = "AndroStats"
+version = "0.1.6"
+description = "Stats for andrology"
 authors = ["M-Jeffryes <michael@maleboxhealth.com>"]
 readme = "README.md"
+packages = [{include = "AndroStats"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -14,6 +15,16 @@ seaborn = "^0.13.2"
 
 [tool.poetry.group.dev.dependencies]
 twine = "^5.1.0"
+versioneer = "^0.29"
+
+[tool.poe.tasks]
+lint = "black --check ."
+lint-fix = "black ."
+type-check = "mypy MbhModelling tests --strict"
+test = "pytest"
+
+[tool.black]
+line-length = 180
 
 [build-system]
 requires = ["poetry-core"]
