@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-from performance import BlandAltmanCalculation
+from AndroStats.performance import BlandAltmanCalculation
 
 
 def plot_prediction_comparision(
