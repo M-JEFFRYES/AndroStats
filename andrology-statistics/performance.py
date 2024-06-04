@@ -85,3 +85,52 @@ class CanoeAnalysis:
         c_a_1 = self.array_predictions_within_canoe(arr1, arr2, multipler=multipler)
         val = float(np.sum(c_a_1) / len(c_a_1))
         return val
+
+
+class BlandAltmanCalculation:
+    CI_95 = 1.96
+
+    def __init__(self):
+        return
+
+    def calculate_mean(
+        self, true_values: np.array, predicted_values: np.array
+    ) -> np.array:
+        return (true_values + predicted_values) / 2
+
+    def calculate_difference(
+        self, true_values: np.array, predicted_values: np.array
+    ) -> np.array:
+        return true_values - predicted_values
+
+    def calculate_bias(self, measurement_differences: np.array) -> float:
+        return np.mean(measurement_differences)
+
+    def calculate_difference_std(self, measurement_differences: np.array) -> float:
+        return np.std(measurement_differences)
+
+    def calculate_upper_limit(self, mean_bias: float, difference_std: float) -> float:
+        return mean_bias + (self.CI_95 * difference_std)
+
+    def calculate_lower_limit(self, mean_bias: float, difference_std: float) -> float:
+        return mean_bias - (self.CI_95 * difference_std)
+
+    def calculate_bland_altman(
+        self, true_values: np.array, predicted_values: np.array
+    ) -> dict:
+        measurement_means = self.calculate_mean(true_values, predicted_values)
+        measurement_differences = self.calculate_difference(
+            true_values, predicted_values
+        )
+        mean_bias = self.calculate_bias(measurement_differences)
+        difference_std = self.calculate_difference_std(measurement_differences)
+        upper_limit = self.calculate_upper_limit(mean_bias, difference_std)
+        lower_limit = self.calculate_lower_limit(mean_bias, difference_std)
+        return {
+            "mean": measurement_means,
+            "diff": measurement_differences,
+            "mean_bias": mean_bias,
+            "diff_std": difference_std,
+            "upper_limit": upper_limit,
+            "lower_limit": lower_limit,
+        }
