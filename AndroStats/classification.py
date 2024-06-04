@@ -13,13 +13,8 @@ class PredictionClassification:
             return "FN"
         return None
 
-    def array_prediction_status(
-        self, true_abnormals: List[bool], prediction_abnormals: List[bool]
-    ) -> List[str]:
-        return [
-            self.prediction_status(t, p)
-            for t, p in zip(true_abnormals, prediction_abnormals)
-        ]
+    def array_prediction_status(self, true_abnormals: List[bool], prediction_abnormals: List[bool]) -> List[str]:
+        return [self.prediction_status(t, p) for t, p in zip(true_abnormals, prediction_abnormals)]
 
     def get_status_counts(self, statuses: List[str]) -> Dict[str, int]:
         return {
