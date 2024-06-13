@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from numpy.typing import NDArray
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Any
 from AndroStats import get_resource
 
 
@@ -109,8 +109,8 @@ class SemenAnalysisParameters:
         parameter = self.df_percentiles[self.df_percentiles["parameter"] == variable]
         if len(parameter) != 1:
             raise Exception(f"Check parameter name: {variable} and percentiles dataset")
-        abnormal_threshold = parameter.loc[0, "abnormal_threshold"]
-        is_lower = parameter.loc[0, "is_lower"]
+        abnormal_threshold: float = parameter.iloc[0]["abnormal_threshold"]
+        is_lower: bool = parameter.iloc[0]["is_lower"]
         return (abnormal_threshold, is_lower)
 
     def get_threshold_data(self) -> None:
@@ -158,23 +158,25 @@ class DoughnutAnalysis:
                 return "TP"
             elif (true_status in ["ABOVE TRUE", "ABOVE BOUNDARY"]) and (pred_status == "BELOW TRUE"):
                 return "FN"
-        return None
+        raise Exception(f"Unknown status, trus_status: {true_status}, pred_status: {pred_status}")
 
-    def get_array_comparision(self, true_vals: NDArray[np.float64], pred_vals: NDArray[np.float64], allowable_variance: float, threshold: int, is_lower: bool):
-        res = []
+    def get_array_comparision(self, true_vals: NDArray[np.float64], pred_vals: NDArray[np.float64], allowable_variance: float, threshold: int, is_lower: bool) -> List[str]:
+        res: List[str] = []
         for tv, pv in zip(true_vals, pred_vals):
             status = self.get_comparision_status(tv, pv, allowable_variance, threshold, is_lower)
             res.append(status)
         return res
 
-    def get_boundary_status_array(self, values: NDArray[np.float64], allowable_variance: float, threshold: int) -> str:
+    def get_boundary_status_array(self, values: NDArray[np.float64], allowable_variance: float, threshold: int) -> List[str]:
         res = []
         for v in values:
             status = self.get_measurement_status(v, allowable_variance, threshold)
             res.append(status)
         return res
 
-    def calculate_doughnut_analysis(self, true_vals: NDArray[np.float64], pred_vals: NDArray[np.float64], allowable_variance: float, threshold: int, is_lower: bool):
+    def calculate_doughnut_analysis(
+        self, true_vals: NDArray[np.float64], pred_vals: NDArray[np.float64], allowable_variance: float, threshold: int, is_lower: bool
+    ) -> Dict[str, int]:
         statuses = self.get_array_comparision(true_vals, pred_vals, allowable_variance, threshold, is_lower)
         return {
             "TP": statuses.count("TP"),
@@ -187,7 +189,7 @@ class DoughnutAnalysis:
 class BlandAltmanCalculation:
     CI_95 = 1.96
 
-    def __init__(self):
+    def __init__(self) -> None:
         return
 
     def calculate_mean(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -197,10 +199,10 @@ class BlandAltmanCalculation:
         return true_values - predicted_values
 
     def calculate_bias(self, measurement_differences: NDArray[np.float64]) -> float:
-        return np.mean(measurement_differences)
+        return float(np.mean(measurement_differences))
 
     def calculate_difference_std(self, measurement_differences: NDArray[np.float64]) -> float:
-        return np.std(measurement_differences)
+        return float(np.std(measurement_differences))
 
     def calculate_upper_limit(self, mean_bias: float, difference_std: float) -> float:
         return mean_bias + (self.CI_95 * difference_std)
@@ -208,7 +210,7 @@ class BlandAltmanCalculation:
     def calculate_lower_limit(self, mean_bias: float, difference_std: float) -> float:
         return mean_bias - (self.CI_95 * difference_std)
 
-    def calculate(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> dict:
+    def calculate(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> Dict[str, Any]:
         measurement_means = self.calculate_mean(true_values, predicted_values)
         measurement_differences = self.calculate_difference(true_values, predicted_values)
         mean_bias = self.calculate_bias(measurement_differences)
@@ -233,9 +235,7 @@ class PredictionClassification:
             return "FP"
         if not true_abnormal and not prediction_abnormal:
             return "TN"
-        if true_abnormal and not prediction_abnormal:
-            return "FN"
-        return None
+        return "FN"
 
     def array_prediction_status(self, true_abnormals: List[bool], prediction_abnormals: List[bool]) -> List[str]:
         return [self.prediction_status(t, p) for t, p in zip(true_abnormals, prediction_abnormals)]
@@ -307,20 +307,21 @@ class PredictionComparision:
     pclass = PredictionClassification()
     doughnut = DoughnutAnalysis()
 
-    def calculate_mean_absolut_different(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> float:
-        return np.mean(np.abs(true_values - predicted_values))
+    def calculate_mean_absolute_different(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> float:
+        mad: float = np.mean(np.abs(true_values - predicted_values))
+        return mad
 
-    def analyse(self, true_values: NDArray[np.float64], predicted_values: NDArray, variable: str) -> dict:
+    def analyse(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64], variable: str) -> Dict[str, Any]:
         threshold_present = variable in self.sap.thresholding_info
 
         bland_altman_data = self.bland_altman.calculate(true_values, predicted_values)
         bland_altman_data.pop("mean")
         bland_altman_data.pop("diff")
 
-        res = {}
+        res: Dict[str, Any] = {}
         res["variable"] = variable
         res["n"] = len(true_values)
-        res["mean_abs_diff"] = self.calculate_mean_absolut_different(true_values, predicted_values)
+        res["mean_abs_diff"] = self.calculate_mean_absolute_different(true_values, predicted_values)
         res.update(bland_altman_data)
 
         res["c1_score"] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values)
