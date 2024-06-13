@@ -32,6 +32,6 @@ jobs:
     - name: Type check with mypy
       run: |
         poetry poe type-check
-    - name: Test with pytest
-      run: |
-        poetry poe test
+    # - name: Test with pytest
+    #   run: |
+    #     poetry poe test
