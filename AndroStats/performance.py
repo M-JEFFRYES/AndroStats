@@ -155,14 +155,11 @@ class ParameterVarianceContext:
         if variance_type not in key:
             raise Exception(f"Unknown variance type: {variance_type}")
 
-        try:
-            variable_row = self.sap.df_variation[self.sap.df_variation["parameter"] == variable]
-            if len(variable_row) != 1:
-                raise AnalysisParameterNotFoundError(variable)
+        variable_row = self.sap.df_variation[self.sap.df_variation["parameter"] == variable]
+        if len(variable_row) != 1:
+            raise AnalysisParameterNotFoundError(variable)
 
-            variance: float = variable_row[key[variance_type]].iloc[0]
-        except Exception as e:
-            raise Exception(f"Parameter {variable} not found in variance dataset") from e
+        variance: float = variable_row[key[variance_type]].iloc[0]
         return variance
 
     def prediction_within_biological_and_analytical_variance(self, true_value: float, pred_value: float, variable: str) -> bool:
@@ -407,7 +404,7 @@ class PredictionComparision:
         res["c1_score"] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values)
         res["c1_5_score"] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values, multipler=1.5)
 
-        res["wihtin_baa_score"] = within_baa_score
+        res["within_baa_score"] = within_baa_score
 
         if threshold_present:
             threshold_info = self.sap.thresholding_info[variable]
