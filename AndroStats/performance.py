@@ -54,7 +54,7 @@ class CanoeAnalysis:
             val_check = int(true_value)
             variance: float = self.canoe_allowances[self.canoe_allowances["value"] == val_check]["variance"].iloc[0]
         except Exception as e:
-            raise Exception(f"Value {val_check} not found in perfomance canoe range") from e
+            raise ValueError(f"Value {val_check} not found in perfomance canoe range") from e
         return variance
 
     def prediction_within_canoe(self, true_value: float | int, pred_value: float | int, multipler: float = 1) -> bool:
