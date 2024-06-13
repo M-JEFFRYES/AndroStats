@@ -1,7 +1,7 @@
-parameter,no_of_papers,biological_variation_cv_i,biological_variation_cv_g,desirable_specification_i,desirable_specification_b,desirable_specification_te
-concentration,1,26.8,56.4,13.4,15.6,37.7
-morphology,1,19.6,44,9.8,12,28.2
-progress,1,15.2,32.8,7.6,9,21.6
-fast_progress,1,18.8,51.8,9.4,13.8,29.3
-total_motility,1,18.4,29.8,9.2,8.8,23.9
-vitality,1,10.3,25.8,5.2,6.9,15.4
+parameter,no_of_papers,biological_variation_cv_i,biological_variation_cv_g,biological_and_analytical_variation_cv_bwa,desirable_specification_i,desirable_specification_b,desirable_specification_te
+concentration,1,26.8,56.4,28.1,13.4,15.6,37.7
+morphology,1,19.6,44,20.9,9.8,12,28.2
+progress,1,15.2,32.8,17.8,7.6,9,21.6
+fast_progress,1,18.8,51.8,22.8,9.4,13.8,29.3
+total_motility,1,18.4,29.8,20.4,9.2,8.8,23.9
+vitality,1,10.3,25.8,12.4,5.2,6.9,15.4
