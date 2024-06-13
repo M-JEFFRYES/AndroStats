@@ -93,15 +93,19 @@ class SemenAnalysisParameters:
         self.get_threshold_data()
         return
 
-    def parameters_data_path(self) -> None:
-        return get_resource("data/param_percentiles.csv")
+    def parameter_percentiles_data_path(self) -> None:
+        return get_resource("data/parameter_percentiles.csv")
+
+    def parameter_variation_data_path(self) -> None:
+        return get_resource("data/parameter_variation.csv")
 
     def load_parameters(self) -> None:
-        self.df = pd.read_csv(self.parameters_data_path())
+        self.df_percentiles = pd.read_csv(self.parameter_percentiles_data_path())
+        self.df_variation = pd.read_csv(self.parameter_variation_data_path())
         return
 
     def get_abnormal_threshold(self, variable: str) -> Tuple[float, bool]:
-        parameter = self.df[self.df["parameter"] == variable]
+        parameter = self.df_percentiles[self.df_percentiles["parameter"] == variable]
         if len(parameter) != 1:
             raise Exception(f"Check parameter name: {variable} and percentiles dataset")
         abnormal_threshold = parameter.loc[0, "abnormal_threshold"]
@@ -110,7 +114,7 @@ class SemenAnalysisParameters:
 
     def get_threshold_data(self) -> None:
         self.thresholding_info = {}
-        for i, row in self.df.iterrows():
+        for i, row in self.df_percentiles.iterrows():
             threshold = row["abnormal_threshold"]
             is_lower = row["is_lower"]
             allowable_variance = self.ca.allowable_variance(threshold)
@@ -124,44 +128,44 @@ class DoughnutAnalysis:
         lower = value - allowable_variance
 
         if (upper < threshold) and (value < threshold):
-            return 'BELOW TRUE'
+            return "BELOW TRUE"
         elif (upper >= threshold) and (value < threshold):
-            return 'BELOW BOUNDARY'
-        elif (lower < threshold):
-            return 'ABOVE BOUNDARY'
-        return 'ABOVE TRUE'
-    
+            return "BELOW BOUNDARY"
+        elif lower < threshold:
+            return "ABOVE BOUNDARY"
+        return "ABOVE TRUE"
+
     def get_comparision_status(self, true_val: int | float, pred_val: int | float, allowable_variance: float, threshold: int, is_lower: bool):
         true_status = self.get_measurement_status(true_val, allowable_variance, threshold)
         pred_status = self.get_measurement_status(pred_val, allowable_variance, threshold)
 
         if is_lower:
-            if (true_status in ['BELOW TRUE', 'BELOW BOUNDARY']) and (pred_status in ['BELOW TRUE', 'BELOW BOUNDARY', 'ABOVE BOUNDARY']):
+            if (true_status in ["BELOW TRUE", "BELOW BOUNDARY"]) and (pred_status in ["BELOW TRUE", "BELOW BOUNDARY", "ABOVE BOUNDARY"]):
                 return "TP"
-            elif (true_status in ['BELOW TRUE', 'BELOW BOUNDARY']) and (pred_status == 'ABOVE TRUE'):
+            elif (true_status in ["BELOW TRUE", "BELOW BOUNDARY"]) and (pred_status == "ABOVE TRUE"):
                 return "FN"
-            elif (true_status in ['ABOVE TRUE', 'ABOVE BOUNDARY']) and (pred_status in ['ABOVE TRUE', 'ABOVE BOUNDARY', 'BELOW BOUNDARY']):
-                return 'TN'
-            elif (true_status in ['ABOVE TRUE', 'ABOVE BOUNDARY']) and (pred_status == 'BELOW TRUE'):
-                return 'FP'
-        else:
-            if (true_status in ['BELOW TRUE', 'BELOW BOUNDARY']) and (pred_status in ['BELOW TRUE', 'BELOW BOUNDARY', 'ABOVE BOUNDARY']):
+            elif (true_status in ["ABOVE TRUE", "ABOVE BOUNDARY"]) and (pred_status in ["ABOVE TRUE", "ABOVE BOUNDARY", "BELOW BOUNDARY"]):
                 return "TN"
-            elif (true_status in ['BELOW TRUE', 'BELOW BOUNDARY']) and (pred_status == 'ABOVE TRUE'):
+            elif (true_status in ["ABOVE TRUE", "ABOVE BOUNDARY"]) and (pred_status == "BELOW TRUE"):
                 return "FP"
-            elif (true_status in ['ABOVE TRUE', 'ABOVE BOUNDARY']) and (pred_status in ['ABOVE TRUE', 'ABOVE BOUNDARY', 'BELOW BOUNDARY']):
-                return 'TP'
-            elif (true_status in ['ABOVE TRUE', 'ABOVE BOUNDARY']) and (pred_status == 'BELOW TRUE'):
-                return 'FN'
+        else:
+            if (true_status in ["BELOW TRUE", "BELOW BOUNDARY"]) and (pred_status in ["BELOW TRUE", "BELOW BOUNDARY", "ABOVE BOUNDARY"]):
+                return "TN"
+            elif (true_status in ["BELOW TRUE", "BELOW BOUNDARY"]) and (pred_status == "ABOVE TRUE"):
+                return "FP"
+            elif (true_status in ["ABOVE TRUE", "ABOVE BOUNDARY"]) and (pred_status in ["ABOVE TRUE", "ABOVE BOUNDARY", "BELOW BOUNDARY"]):
+                return "TP"
+            elif (true_status in ["ABOVE TRUE", "ABOVE BOUNDARY"]) and (pred_status == "BELOW TRUE"):
+                return "FN"
         return None
-    
+
     def get_array_comparision(self, true_vals: np.array, pred_vals: np.array, allowable_variance: float, threshold: int, is_lower: bool):
         res = []
         for tv, pv in zip(true_vals, pred_vals):
             status = self.get_comparision_status(tv, pv, allowable_variance, threshold, is_lower)
             res.append(status)
         return res
-    
+
     def get_boundary_status_array(self, values: np.array, allowable_variance: float, threshold: int) -> str:
         res = []
         for v in values:
@@ -285,7 +289,7 @@ class PredictionClassification:
         statuses = self.array_prediction_status(true_abnormals, prediction_abnormals)
         status_counts = self.get_status_counts(statuses)
         return self.calculate_metrics(status_counts)
-    
+
     def analyse_values(self, true_values: np.array, predicted_values: np.array, threshold: float, is_lower: bool) -> Dict[str, float]:
         if is_lower:
             true_abnormals = [True if x <= threshold else False for x in true_values]
@@ -302,28 +306,33 @@ class PredictionComparision:
     pclass = PredictionClassification()
     doughnut = DoughnutAnalysis()
 
+    def calculate_mean_absolut_different(self, true_values: np.array, predicted_values: np.array) -> float:
+        return np.mean(np.abs(true_values - predicted_values))
+
     def analyse(self, true_values: np.array, predicted_values: np.array, variable: str) -> dict:
         threshold_present = variable in self.sap.thresholding_info
 
         bland_altman_data = self.bland_altman.calculate(true_values, predicted_values)
-        bland_altman_data.pop('mean')
-        bland_altman_data.pop('diff')
+        bland_altman_data.pop("mean")
+        bland_altman_data.pop("diff")
 
         res = {}
-        res['variable'] = variable
+        res["variable"] = variable
+        res["n"] = len(true_values)
+        res["mean_abs_diff"] = self.calculate_mean_absolut_different(true_values, predicted_values)
         res.update(bland_altman_data)
 
-        res['c1_score'] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values)
-        res['c1_5_score'] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values, multipler=1.5)
+        res["c1_score"] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values)
+        res["c1_5_score"] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values, multipler=1.5)
 
         if threshold_present:
             threshold_info = self.sap.thresholding_info[variable]
-            abnormal_threshold = threshold_info['threshold']
-            is_lower = threshold_info['is_lower']
-            allowable_variance = threshold_info['allowable_variance']
-            res['abnormal_threshold'] = abnormal_threshold
-            res['is_lower'] = is_lower
-            res['allowable_variance_at_threshold'] = allowable_variance
+            abnormal_threshold = threshold_info["threshold"]
+            is_lower = threshold_info["is_lower"]
+            allowable_variance = threshold_info["allowable_variance"]
+            res["abnormal_threshold"] = abnormal_threshold
+            res["is_lower"] = is_lower
+            res["allowable_variance_at_threshold"] = allowable_variance
 
             discrete_performance = self.pclass.analyse_values(true_values, predicted_values, abnormal_threshold, is_lower)
             res.update(discrete_performance)
@@ -331,6 +340,6 @@ class PredictionComparision:
             doughnut_analysis = self.doughnut.calculate_doughnut_analysis(true_values, predicted_values, allowable_variance, abnormal_threshold, is_lower)
             dn_res = {}
             for k, v in doughnut_analysis.items():
-                dn_res[f'DN_{k}'] = v
+                dn_res[f"DN_{k}"] = v
             res.update(dn_res)
         return res
