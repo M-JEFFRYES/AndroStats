@@ -5,6 +5,18 @@ from typing import Tuple, Dict, List, Any
 from AndroStats import get_resource
 
 
+class AnalysisParameterNotFoundError(Exception):
+    def __init__(self, variable: str) -> None:
+        super().__init__(f"Variable not found in dataset: {variable}")
+        return
+
+
+class ValueNotInRangeError(ValueError):
+    def __init__(self, value: int, min: int, max: int) -> None:
+        super().__init__(f"{value} outside of input range({min} - {max})")
+        return
+
+
 class CanoeAnalysis:
     def __init__(self) -> None:
         self.define_performance_canoe()
@@ -50,11 +62,14 @@ class CanoeAnalysis:
         return
 
     def allowable_variance(self, true_value: float | int) -> float:
-        try:
-            val_check = int(true_value)
-            variance: float = self.canoe_allowances[self.canoe_allowances["value"] == val_check]["variance"].iloc[0]
-        except Exception as e:
-            raise ValueError(f"Value {val_check} not found in perfomance canoe range") from e
+        val_check = int(true_value)
+        variabl_row = self.canoe_allowances[self.canoe_allowances["value"] == val_check]
+        if len(variabl_row) != 1:
+            min_v = self.canoe_allowances["value"].min()
+            max_v = self.canoe_allowances["value"].max()
+            raise ValueNotInRangeError(val_check, min_v, max_v)
+
+        variance: float = variabl_row["variance"].iloc[0]
         return variance
 
     def prediction_within_canoe(self, true_value: float | int, pred_value: float | int, multipler: float = 1) -> bool:
@@ -141,10 +156,37 @@ class ParameterVarianceContext:
             raise Exception(f"Unknown variance type: {variance_type}")
 
         try:
-            variance = self.sap.df_variation[self.sap.df_variation["parameter"] == variable][key[variance_type]].iloc[0]
+            variable_row = self.sap.df_variation[self.sap.df_variation["parameter"] == variable]
+            if len(variable_row) != 1:
+                raise AnalysisParameterNotFoundError(variable)
+
+            variance: float = variable_row[key[variance_type]].iloc[0]
         except Exception as e:
             raise Exception(f"Parameter {variable} not found in variance dataset") from e
         return variance
+
+    def prediction_within_biological_and_analytical_variance(self, true_value: float, pred_value: float, variable: str) -> bool:
+        variance = self.get_parameter_variance(variable)
+        c1: bool = (pred_value >= (true_value - variance)) and (pred_value <= (true_value + variance))
+        return c1
+
+    def array_predictions_within_biological_and_analytical_variance(self, arr1: NDArray[np.float64], arr2: NDArray[np.float64], variable: str) -> List[bool]:
+        if (len(arr1) < 1) or (len(arr2) < 1):
+            raise Exception("Empty input array")
+
+        if len(arr1) != len(arr2):
+            raise Exception("Different length input arrays")
+
+        c_a_1: List[bool] = []
+        for true_value, predicted_value in zip(arr1, arr2):
+            c1 = self.prediction_within_biological_and_analytical_variance(true_value, predicted_value, variable)
+            c_a_1.append(c1)
+        return c_a_1
+
+    def calculate_within_biological_and_analytical_variance_score(self, arr1: NDArray[np.float64], arr2: NDArray[np.float64], variable: str) -> float:
+        c_a_1 = self.array_predictions_within_biological_and_analytical_variance(arr1, arr2, variable)
+        val = float(np.sum(c_a_1) / len(c_a_1))
+        return val
 
 
 class DoughnutAnalysis:
@@ -326,14 +368,26 @@ class PredictionClassification:
 
 
 class PredictionComparision:
-    bland_altman = BlandAltmanCalculation()
-    sap = SemenAnalysisParameters()
-    pclass = PredictionClassification()
-    doughnut = DoughnutAnalysis()
+    def __init__(self) -> None:
+        self.bland_altman = BlandAltmanCalculation()
+        self.sap = SemenAnalysisParameters()
+        self.pclass = PredictionClassification()
+        self.doughnut = DoughnutAnalysis()
+        return
 
     def calculate_mean_absolute_different(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> float:
         mad: float = np.mean(np.abs(true_values - predicted_values))
         return mad
+
+    def get_baa_score(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64], variable: str) -> float | None:
+        pvc = ParameterVarianceContext()
+        try:
+            within_baa_score = pvc.calculate_within_biological_and_analytical_variance_score(true_values, predicted_values, variable)
+        except AnalysisParameterNotFoundError:
+            within_baa_score = None
+        except Exception as e:
+            raise e
+        return within_baa_score
 
     def analyse(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64], variable: str) -> Dict[str, Any]:
         threshold_present = variable in self.sap.thresholding_info
@@ -341,6 +395,8 @@ class PredictionComparision:
         bland_altman_data = self.bland_altman.calculate(true_values, predicted_values)
         bland_altman_data.pop("mean")
         bland_altman_data.pop("diff")
+
+        within_baa_score = self.get_baa_score(true_values, predicted_values, variable)
 
         res: Dict[str, Any] = {}
         res["variable"] = variable
@@ -350,6 +406,8 @@ class PredictionComparision:
 
         res["c1_score"] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values)
         res["c1_5_score"] = self.sap.ca.calculate_canoe_performance_score(true_values, predicted_values, multipler=1.5)
+
+        res["wihtin_baa_score"] = within_baa_score
 
         if threshold_present:
             threshold_info = self.sap.thresholding_info[variable]
