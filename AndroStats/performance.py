@@ -87,9 +87,8 @@ class CanoeAnalysis:
 
 
 class SemenAnalysisParameters:
-    ca = CanoeAnalysis()
-
     def __init__(self) -> None:
+        self.ca = CanoeAnalysis()
         self.load_parameters()
         self.get_threshold_data()
         return
@@ -121,6 +120,31 @@ class SemenAnalysisParameters:
             allowable_variance = self.ca.allowable_variance(threshold)
             self.thresholding_info[row["parameter"]] = {"allowable_variance": allowable_variance, "threshold": threshold, "is_lower": is_lower}
         return
+
+
+class ParameterVarianceContext:
+    def __init__(self) -> None:
+        self.sap = SemenAnalysisParameters()
+        return
+
+    def get_parameter_variance(self, variable: str, variance_type: str = "biological_and_analytical") -> float:
+        key: Dict[str, str] = {
+            "within_subject_biological": "biological_variation_cv_i",
+            "between_subject_biological": "biological_variation_cv_g",
+            "biological_and_analytical": "biological_and_analytical_variation_cv_bwa",
+            "desirable_specification_for_imprecision": "desirable_specification_i",
+            "desirable_specification_for_inaccuracy": "desirable_specification_b",
+            "desirable_specification_for_allowable_total_error": "desirable_specification_te",
+        }
+
+        if variance_type not in key:
+            raise Exception(f"Unknown variance type: {variance_type}")
+
+        try:
+            variance = self.sap.df_variation[self.sap.df_variation["parameter"] == variable][key[variance_type]].iloc[0]
+        except Exception as e:
+            raise Exception(f"Parameter {variable} not found in variance dataset") from e
+        return variance
 
 
 class DoughnutAnalysis:
