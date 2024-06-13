@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
+from numpy.typing import NDArray
 from typing import Tuple, Dict, List
 from AndroStats import get_resource
 
 
 class CanoeAnalysis:
-    def __init__(self):
+    def __init__(self) -> None:
         self.define_performance_canoe()
         return
 
@@ -51,9 +52,9 @@ class CanoeAnalysis:
     def allowable_variance(self, true_value: float | int) -> float:
         try:
             val_check = int(true_value)
-            variance = self.canoe_allowances[self.canoe_allowances["value"] == val_check]["variance"].iloc[0]
-        except:
-            raise Exception(f"Value {val_check} not found in perfomance canoe range")
+            variance: float = self.canoe_allowances[self.canoe_allowances["value"] == val_check]["variance"].iloc[0]
+        except Exception as e:
+            raise Exception(f"Value {val_check} not found in perfomance canoe range") from e
         return variance
 
     def prediction_within_canoe(self, true_value: float | int, pred_value: float | int, multipler: float = 1) -> bool:
@@ -63,10 +64,10 @@ class CanoeAnalysis:
         except:
             raise Exception(f"Value {val_check} not found in perfomance canoe range")
 
-        c1 = (pred_value >= (true_value - (variance * multipler))) and (pred_value <= (true_value + (variance * multipler)))
+        c1: bool = (pred_value >= (true_value - (variance * multipler))) and (pred_value <= (true_value + (variance * multipler)))
         return c1
 
-    def array_predictions_within_canoe(self, arr1: np.array, arr2: np.array, multipler: float = 1) -> np.array:
+    def array_predictions_within_canoe(self, arr1: NDArray[np.float64], arr2: NDArray[np.float64], multipler: float = 1.0) -> List[bool]:
         if (len(arr1) < 1) or (len(arr2) < 1):
             raise Exception("Empty input array")
 
@@ -79,7 +80,7 @@ class CanoeAnalysis:
             c_a_1.append(c1)
         return c_a_1
 
-    def calculate_canoe_performance_score(self, arr1: np.array, arr2: np.array, multipler: float = 1) -> float:
+    def calculate_canoe_performance_score(self, arr1: NDArray[np.float64], arr2: NDArray[np.float64], multipler: float = 1) -> float:
         c_a_1 = self.array_predictions_within_canoe(arr1, arr2, multipler=multipler)
         val = float(np.sum(c_a_1) / len(c_a_1))
         return val
@@ -93,10 +94,10 @@ class SemenAnalysisParameters:
         self.get_threshold_data()
         return
 
-    def parameter_percentiles_data_path(self) -> None:
+    def parameter_percentiles_data_path(self) -> str:
         return get_resource("data/parameter_percentiles.csv")
 
-    def parameter_variation_data_path(self) -> None:
+    def parameter_variation_data_path(self) -> str:
         return get_resource("data/parameter_variation.csv")
 
     def load_parameters(self) -> None:
@@ -135,7 +136,7 @@ class DoughnutAnalysis:
             return "ABOVE BOUNDARY"
         return "ABOVE TRUE"
 
-    def get_comparision_status(self, true_val: int | float, pred_val: int | float, allowable_variance: float, threshold: int, is_lower: bool):
+    def get_comparision_status(self, true_val: int | float, pred_val: int | float, allowable_variance: float, threshold: int, is_lower: bool) -> str:
         true_status = self.get_measurement_status(true_val, allowable_variance, threshold)
         pred_status = self.get_measurement_status(pred_val, allowable_variance, threshold)
 
@@ -159,21 +160,21 @@ class DoughnutAnalysis:
                 return "FN"
         return None
 
-    def get_array_comparision(self, true_vals: np.array, pred_vals: np.array, allowable_variance: float, threshold: int, is_lower: bool):
+    def get_array_comparision(self, true_vals: NDArray[np.float64], pred_vals: NDArray[np.float64], allowable_variance: float, threshold: int, is_lower: bool):
         res = []
         for tv, pv in zip(true_vals, pred_vals):
             status = self.get_comparision_status(tv, pv, allowable_variance, threshold, is_lower)
             res.append(status)
         return res
 
-    def get_boundary_status_array(self, values: np.array, allowable_variance: float, threshold: int) -> str:
+    def get_boundary_status_array(self, values: NDArray[np.float64], allowable_variance: float, threshold: int) -> str:
         res = []
         for v in values:
             status = self.get_measurement_status(v, allowable_variance, threshold)
             res.append(status)
         return res
 
-    def calculate_doughnut_analysis(self, true_vals: np.array, pred_vals: np.array, allowable_variance: float, threshold: int, is_lower: bool):
+    def calculate_doughnut_analysis(self, true_vals: NDArray[np.float64], pred_vals: NDArray[np.float64], allowable_variance: float, threshold: int, is_lower: bool):
         statuses = self.get_array_comparision(true_vals, pred_vals, allowable_variance, threshold, is_lower)
         return {
             "TP": statuses.count("TP"),
@@ -189,16 +190,16 @@ class BlandAltmanCalculation:
     def __init__(self):
         return
 
-    def calculate_mean(self, true_values: np.array, predicted_values: np.array) -> np.array:
+    def calculate_mean(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> NDArray[np.float64]:
         return (true_values + predicted_values) / 2
 
-    def calculate_difference(self, true_values: np.array, predicted_values: np.array) -> np.array:
+    def calculate_difference(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> NDArray[np.float64]:
         return true_values - predicted_values
 
-    def calculate_bias(self, measurement_differences: np.array) -> float:
+    def calculate_bias(self, measurement_differences: NDArray[np.float64]) -> float:
         return np.mean(measurement_differences)
 
-    def calculate_difference_std(self, measurement_differences: np.array) -> float:
+    def calculate_difference_std(self, measurement_differences: NDArray[np.float64]) -> float:
         return np.std(measurement_differences)
 
     def calculate_upper_limit(self, mean_bias: float, difference_std: float) -> float:
@@ -207,7 +208,7 @@ class BlandAltmanCalculation:
     def calculate_lower_limit(self, mean_bias: float, difference_std: float) -> float:
         return mean_bias - (self.CI_95 * difference_std)
 
-    def calculate(self, true_values: np.array, predicted_values: np.array) -> dict:
+    def calculate(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> dict:
         measurement_means = self.calculate_mean(true_values, predicted_values)
         measurement_differences = self.calculate_difference(true_values, predicted_values)
         mean_bias = self.calculate_bias(measurement_differences)
@@ -290,7 +291,7 @@ class PredictionClassification:
         status_counts = self.get_status_counts(statuses)
         return self.calculate_metrics(status_counts)
 
-    def analyse_values(self, true_values: np.array, predicted_values: np.array, threshold: float, is_lower: bool) -> Dict[str, float]:
+    def analyse_values(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64], threshold: float, is_lower: bool) -> Dict[str, float]:
         if is_lower:
             true_abnormals = [True if x <= threshold else False for x in true_values]
             prediction_abnormals = [True if x <= threshold else False for x in predicted_values]
@@ -306,10 +307,10 @@ class PredictionComparision:
     pclass = PredictionClassification()
     doughnut = DoughnutAnalysis()
 
-    def calculate_mean_absolut_different(self, true_values: np.array, predicted_values: np.array) -> float:
+    def calculate_mean_absolut_different(self, true_values: NDArray[np.float64], predicted_values: NDArray[np.float64]) -> float:
         return np.mean(np.abs(true_values - predicted_values))
 
-    def analyse(self, true_values: np.array, predicted_values: np.array, variable: str) -> dict:
+    def analyse(self, true_values: NDArray[np.float64], predicted_values: NDArray, variable: str) -> dict:
         threshold_present = variable in self.sap.thresholding_info
 
         bland_altman_data = self.bland_altman.calculate(true_values, predicted_values)
