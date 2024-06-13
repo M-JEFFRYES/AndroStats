@@ -61,8 +61,8 @@ class CanoeAnalysis:
         try:
             val_check = int(true_value)
             variance = self.canoe_allowances[self.canoe_allowances["value"] == val_check]["variance"].iloc[0]
-        except:
-            raise Exception(f"Value {val_check} not found in perfomance canoe range")
+        except Exception as e:
+            raise Exception(f"Value {val_check} not found in perfomance canoe range") from e
 
         c1: bool = (pred_value >= (true_value - (variance * multipler))) and (pred_value <= (true_value + (variance * multipler)))
         return c1
