@@ -6,7 +6,7 @@ import AndroStats.performance as prf
 class TestCanoeAnalysis(unittest.TestCase):
     def test_init(self):
         prf.CanoeAnalysis()
-    
+
     def test_allowable_variance(self):
         VALUE = 50
         TRUE_AV = 10
@@ -20,7 +20,7 @@ class TestCanoeAnalysis(unittest.TestCase):
         ca = prf.CanoeAnalysis()
         with pytest.raises(ValueError):
             ca.allowable_variance(VALUE)
-    
+
     def test_prediction_within_canoe(self):
         T_VALUE = 50
         P_VALUE = 55
